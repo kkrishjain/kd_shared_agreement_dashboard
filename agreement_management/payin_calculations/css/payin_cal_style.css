@@ -1,0 +1,274 @@
+/* style.css */
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background-color: #f8f9fa;
+}
+
+/* Table structure */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-top: 15px;
+    font-size: 14px;
+}
+
+th, td {
+    padding: 8px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+
+th {
+    background-color: #e9ecef;
+    font-weight: 600;
+    font-size: 0.95rem;
+    position: sticky;
+    top: 0;
+}
+
+td {
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+}
+
+/* Search and filter styles */
+.search-container {
+    position: relative;
+    margin: 15px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.search-box {
+    padding: 8px 30px 8px 15px;
+    width: 300px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.search-icon {
+    cursor: pointer;
+    color: #666;
+}
+
+.filter-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    z-index: 100;
+    width: 200px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.filter-dropdown div {
+    padding: 8px 15px;
+    cursor: pointer;
+}
+
+.filter-dropdown div:hover {
+    background-color: #f5f5f5;
+}
+
+.active-filter {
+    font-size: 12px;
+    color: #666;
+    background: #f0f0f0;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+/* Records control and pagination */
+.records-control {
+    margin: 15px 0;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.limit-selector select {
+    padding: 5px 10px;
+}
+
+.pagination {
+    margin: 20px 0;
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.pagination a, .pagination span {
+    padding: 8px 12px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #333;
+}
+
+.pagination a.active {
+    background: #3498db;
+    color: white;
+}
+
+.pagination span.ellipsis {
+    background: none;
+    padding: 8px 6px;
+}
+
+/* Buttons and actions */
+.download-btn {
+    color: #fff;
+    background-color: #28a745;
+    padding: 5px 10px;
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.download-btn:hover {
+    background-color: #218838;
+}
+
+.export-btn {
+    background-color: #17a2b8;
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 10px;
+}
+
+.recalculate-btn {
+    background-color: #e0a800;
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 10px;
+}
+
+.export-btn:hover{
+    background-color: #138496;
+}
+
+.recalculate-btn:hover {
+    background-color: #e0a800;
+}
+
+.recalculate-btn:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+.loading {
+    display: none;
+    margin-left: 10px;
+    color: #17a2b8;
+}
+
+/* Alignment and text styles */
+.numeric {
+    text-align: right;
+}
+
+.text-center {
+    text-align: center;
+}
+
+/* Sticky header for table */
+.sticky-header {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 100;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Hover effects */
+tr:hover {
+    background-color: #f8f9fa;
+}
+
+tr:hover td {
+    background-color: #f8f9fa;
+}
+
+/* File download links */
+td a[href*="download.php"] {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 4px;
+    background-color: #349716;
+    transition: all 0.2s;
+    color: white !important;
+    text-decoration: none;
+}
+
+td a[href*="download.php"]:hover {
+    background-color: #34971671;
+    text-decoration: none;
+}
+
+/* Action buttons */
+td a[href*="edit_agreement"],
+td a[href*="add_agreement"] {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 4px;
+    background-color: #007bff;
+    color: white !important;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+td a[href*="edit_agreement"]:hover,
+td a[href*="add_agreement"]:hover {
+    background-color: #0056b3;
+    text-decoration: none;
+}
+
+.add_aggrement_btn{
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+}
+
+.add_aggrement_btn:hover{
+    background-color:rgb(25, 104, 45);
+}
+
+.cycle-click{
+    color:blue 
+}
+
+.spoc-click{
+    color:blue 
+}
+
+/* Empty cells */
+td:empty::before {
+    content: "-";
+    color: #6c757d;
+}

@@ -1,0 +1,93 @@
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        label {
+            display: block;
+            margin: 10px 0;
+        }
+        input, select, textarea {
+            padding: 8px;
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        .conditional-section {
+            display: none;
+        }
+        .error {
+            color: red;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid red;
+        }
+        .success {
+            color: green;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid green;
+        }
+        .col-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        a.back-btn {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            margin-bottom: 20px;
+        }
+        .email-container {
+            margin: 10px 0;
+        }
+        .email-field {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .email-field input[type="email"] {
+            flex-grow: 1;
+        }
+        .email-field button.delete-email {
+            background: #e74c3c;
+            padding: 8px;
+            line-height: 1;
+        }
+        .email-field button.delete-email:hover {
+            background: #c0392b;
+        }
+        button.add-email {
+            background: #2ecc71;
+            margin-top: 10px;
+        }
+        button.add-email:hover {
+            background: #27ae60;
+        }
