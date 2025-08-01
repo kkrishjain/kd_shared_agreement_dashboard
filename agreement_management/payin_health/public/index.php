@@ -51,6 +51,8 @@ try {
         pg.premium_to AS 'Premium end',
         pg.policy_start AS 'Policy Start',
         pg.policy_end AS 'Policy End',
+        pg.years_of_policy AS 'Policy Term',
+        pg.years_of_policy AS 'pt',
         pg.location AS Location,
         pg.applicable_percentage AS 'Applicable Percentage',
         pg.commission_statement AS 'Files'
@@ -157,6 +159,8 @@ try {
                         <th>Premium end</th>
                         <th>Policy Start</th>
                         <th>Policy End</th>
+                        <th>Policy Term</th>
+                        <th>pt</th>
                         <th>Location</th>
                         <th>Applicable Percentage</th>
                         <th>Action</th>
@@ -185,6 +189,8 @@ try {
                             <td><?= !empty($row['Premium end']) ? htmlspecialchars($row['Premium end']) : '-' ?></td>
                             <td><?= !empty($row['Policy Start']) ? htmlspecialchars($row['Policy Start']) : '-' ?></td>
                             <td><?= !empty($row['Policy End']) ? htmlspecialchars($row['Policy End']) : '-' ?></td>
+                            <td><?= !empty($row['Policy Term']) ? htmlspecialchars($row['Policy Term']) : '-' ?></td>
+                            <td><?= !empty($row['pt']) ? htmlspecialchars($row['pt']) : '-' ?></td>
                             <td><?= !empty($row['Location']) ? htmlspecialchars($row['Location']) : '-' ?></td>
                             <td><?= !empty($row['Applicable Percentage']) ? htmlspecialchars($row['Applicable Percentage']) : '-' ?></td>
                             <td class="action-buttons">

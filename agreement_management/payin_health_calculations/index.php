@@ -20,8 +20,17 @@ try {
     $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
     $offset = ($limit !== 'all') ? ($page - 1) * (int)$limit : 0;
 
-    // Fetch paginated results from database
-    $selectQuery = "SELECT * FROM payin_health_calculation ORDER BY lead_id";
+    // Fetch paginated results from database with all fields
+    $selectQuery = "SELECT 
+        lead_id, policy_number, product, customer_name, broker_name, 
+        company_name, plan_name, pt, case_type, net_premium, 
+        base_percent, base_amount, reward_percent, reward_amount, 
+        total_payin_percent, payin_amount, tds_percent, tds_amount, 
+        gst_percent, gst_amount, gross_receipt, net_receipt, 
+        team, policy_name, policy_issued, calculation_date, 
+        broker_id, company_id, plan_id, location, status, rm_name
+    FROM payin_health_calculation ORDER BY lead_id";
+    
     if ($limit !== 'all') {
         $selectQuery .= " LIMIT :limit OFFSET :offset";
     }
@@ -51,7 +60,6 @@ try {
     <?php include $_SERVER['DOCUMENT_ROOT'] . '/agreement_management/navbar.php'; ?>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link rel="stylesheet" href="./css/payin_cal_style.css">
-    
 </head>
 <body>
     <div class="content" id="content">
@@ -66,7 +74,7 @@ try {
                 <div onclick="setSearchFilter('broker_name')">Broker Name</div>
                 <div onclick="setSearchFilter('company_name')">Company Name</div>
                 <div onclick="setSearchFilter('plan_name')">Plan Name</div>
-                <div onclick="setSearchFilter('policy_no')">Policy No</div>
+                <div onclick="setSearchFilter('policy_number')">Policy No</div>
             </div>
             <span id="activeFilter" class="active-filter">All Fields</span>
             <button class="export-btn" onclick="exportToExcel()">
@@ -106,9 +114,8 @@ try {
                         <th>Broker Name</th>
                         <th>Company Name</th>
                         <th>Plan Name</th>
-                        <th>PT/PPT</th>
+                        <th>PT</th>
                         <th>Policy Type</th>
-                        <th>Location</th>
                         <th>Net Premium</th>
                         <th>Base %</th>
                         <th>Base Amount</th>
@@ -122,23 +129,30 @@ try {
                         <th>GST Amount</th>
                         <th>Gross Receipt</th>
                         <th>Net Receipt</th>
-                        <th>RM Name</th>
                         <th>Team</th>
+                        <th>Policy Name</th>
+                        <th>Policy Issued</th>
+                        <th>Calculation Date</th>
+                        <th>Broker ID</th>
+                        <th>Company ID</th>
+                        <th>Plan ID</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                        <th>RM Name</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($paginatedResults as $row): ?>
                         <tr>
-                            <td class="lead-id-cell">HCI<?= str_pad($row['lead_id'], 6, '0', STR_PAD_LEFT) ?></td>
+                            <td class="lead-id-cell">HI<?= str_pad($row['lead_id'], 6, '0', STR_PAD_LEFT) ?></td>
                             <td><?= htmlspecialchars($row['policy_number']) ?></td>
                             <td><?= htmlspecialchars($row['product']) ?></td>
                             <td><?= htmlspecialchars($row['customer_name']) ?></td>
                             <td><?= htmlspecialchars($row['broker_name']) ?></td>
                             <td><?= htmlspecialchars($row['company_name']) ?></td>
                             <td><?= htmlspecialchars($row['plan_name']) ?></td>
-                            <td class="text-center"><?= htmlspecialchars($row['pt_ppt']) ?></td>
-                            <td><?= htmlspecialchars($row['policy_type']) ?></td>
-                            <td><?= htmlspecialchars($row['location']) ?></td>
+                            <td class="text-center"><?= htmlspecialchars($row['pt']) ?></td>
+                            <td><?= htmlspecialchars($row['case_type']) ?></td>
                             <td class="numeric"><?= number_format($row['net_premium'], 2) ?></td>
                             <td class="numeric"><?= number_format($row['base_percent'], 2) ?>%</td>
                             <td class="numeric"><?= number_format($row['base_amount'], 0) ?></td>
@@ -152,13 +166,21 @@ try {
                             <td class="numeric"><?= number_format($row['gst_amount'], 0) ?></td>
                             <td class="numeric"><?= number_format($row['gross_receipt'], 2) ?></td>
                             <td class="numeric"><?= number_format($row['net_receipt'], 2) ?></td>
-                            <td><?= htmlspecialchars($row['rm_name']) ?></td>
                             <td><?= htmlspecialchars($row['team']) ?></td>
+                            <td><?= htmlspecialchars($row['policy_name']) ?></td>
+                            <td><?= htmlspecialchars($row['policy_issued']) ?></td>
+                            <td><?= htmlspecialchars($row['calculation_date']) ?></td>
+                            <td><?= htmlspecialchars($row['broker_id']) ?></td>
+                            <td><?= htmlspecialchars($row['company_id']) ?></td>
+                            <td><?= htmlspecialchars($row['plan_id']) ?></td>
+                            <td><?= htmlspecialchars($row['location']) ?></td>
+                            <td><?= htmlspecialchars($row['status']) ?></td>
+                            <td><?= htmlspecialchars($row['rm_name']) ?></td>
                         </tr>
                     <?php endforeach; ?>
                     <?php if (empty($paginatedResults)): ?>
                         <tr>
-                            <td colspan="25" class="text-center">No matching records found</td>
+                            <td colspan="32" class="text-center">No matching records found</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
@@ -216,13 +238,13 @@ try {
                 'broker_name': 4,
                 'company_name': 5,
                 'plan_name': 6,
-                'policy_no': 1,
+                'policy_number': 1,
             };
 
             function setSearchFilter(filterType) {
                 currentFilter = filterType;
                 document.getElementById('activeFilter').textContent = 
-                    filterType === 'all' ? 'All Fields' : filterType;
+                    filterType === 'all' ? 'All Fields' : filterType.replace('_', ' ');
                 document.getElementById('filterDropdown').style.display = 'none';
                 filterTable();
             }

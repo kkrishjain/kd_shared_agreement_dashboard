@@ -11,10 +11,11 @@ define('GST_PERCENT', 0); // Default GST percent
 header('Content-Type: application/json');
 
 try {
-    // Step 1: Fetch eligible health insurance policies with only necessary fields
+    // Step 1: Fetch eligible health insurance policies with critical fields (without agreement data)
     $healthQuery = "SELECT 
                 h.id AS lead_id,
                 h.customer_name,
+                h.ref,
                 h.policy_number,
                 h.policy_issued,
                 h.policy_name,
@@ -26,16 +27,13 @@ try {
                 h.policy_term AS pt,
                 h.policy_broker AS broker_code,
                 b.br_name AS broker_name,
-                a.tds AS tds_percent,
-                a.gst AS gst_percent,
-                cup.name AS mr_name,
+                cup.name AS rm_name,
                 cup.team AS team,
                 h.status
             FROM health_insurance_form h
             INNER JOIN plans_insurance pi ON h.plan_name = pi.pl_id
             INNER JOIN company_names_standardized c ON pi.pl_c_id = c.cns_id AND c.cns_product = 'hi'
             LEFT JOIN brokers b ON h.policy_broker = b.br_id
-            LEFT JOIN agreements a ON h.policy_broker = a.broker_id AND h.company = a.company_id
             LEFT JOIN first_register fr ON h.ref = fr.refercode
             LEFT JOIN corporate_user_permission cup ON fr.addedBy = cup.id
             WHERE h.status = 'Policy Issued'
@@ -57,25 +55,39 @@ try {
         throw new Exception("No eligible health insurance policies found for recalculation");
     }
 
-    // Step 2: Fetch all relevant grid data in one query with updated fields
-    $gridQuery = "SELECT 
-            pg.broker_code,
-            pg.company_code,
-            pg.plan_code,
-            pg.brokerage_type,
-            pg.category,
-            pg.applicable_percentage,
-            pg.premium_from,
-            pg.premium_to,
-            pg.policy_combination,
-            pg.case_type,
-            pg.location,
-            pg.applicable_start,
-            pg.applicable_end,
-            pg.pt
-        FROM ins_payin_grid_health pg
-        WHERE pg.broker_code IN (SELECT DISTINCT policy_broker FROM health_insurance_form WHERE status = 'Policy Issued')
-        AND pg.company_code IN (SELECT DISTINCT company FROM health_insurance_form WHERE status = 'Policy Issued')";
+    // Extract unique broker-company keys for optimized queries
+    $brokerCompanyKeys = [];
+    foreach ($eligiblePolicies as $policy) {
+        $key = $policy['broker_code'] . '|' . $policy['company_code'];
+        $brokerCompanyKeys[$key] = true;
+    }
+    $brokerCompanyKeys = array_keys($brokerCompanyKeys);
+
+    // Step 1.5: Fetch agreement data using ACTUAL broker-company pairs
+    $agreementQuery = "SELECT broker_id, company_id, tds, gst FROM agreements 
+                      WHERE CONCAT(broker_id, '|', company_id) IN ('" . implode("','", $brokerCompanyKeys) . "')";
+    $agreementData = $pdo->query($agreementQuery)->fetchAll(PDO::FETCH_ASSOC);
+    $agreementLookup = [];
+    foreach ($agreementData as $row) {
+        $key = $row['broker_id'] . '|' . $row['company_id'];
+        $agreementLookup[$key] = [
+            'tds' => $row['tds'] ?? TDS_PERCENT,
+            'gst' => $row['gst'] ?? GST_PERCENT
+        ];
+    }
+
+    // Step 2: Fetch grid data using ACTUAL broker/company/plan combinations
+    $gridConditions = [];
+    foreach ($eligiblePolicies as $policy) {
+        $gridConditions[] = sprintf(
+            "(broker_code = %d AND company_code = %d AND plan_code = %d)",
+            $policy['broker_code'],
+            $policy['company_code'],
+            $policy['plan_code']
+        );
+    }
+    $gridQuery = "SELECT * FROM ins_payin_grid_health 
+                 WHERE " . implode(' OR ', $gridConditions);
     
     $gridData = $pdo->query($gridQuery);
     if ($gridData === false) {
@@ -84,7 +96,7 @@ try {
     }
     $gridData = $gridData->fetchAll(PDO::FETCH_ASSOC);
 
-    // Step 3: Organize grid data for quick lookup
+    // Step 3: Organize grid data for quick lookup (structure unchanged)
     $gridLookup = [];
     foreach ($gridData as $row) {
         $key = implode('|', [
@@ -127,12 +139,12 @@ try {
         gst_amount,
         gross_receipt,
         net_receipt,
-        mr_name,
+        rm_name,
         team,
         policy_number,
         policy_issued,
         calculation_date,
-        policy_type,
+        case_type,
         broker_id,
         company_id,
         plan_id,
@@ -148,86 +160,123 @@ try {
 
     foreach ($eligiblePolicies as $policy) {
         try {
-            $netPremium = $policy['net_premium'];
+            $netPremium = $policy['net_premium'] ?? 0;
 
-            // Initialize percentages and amounts
+            // Initialize all values to 0 by default
             $basePercent = 0;
             $rewardPercent = 0;
+            $baseAmount = 0;
+            $rewardAmount = 0;
+            $totalPayinPercent = 0;
+            $payinAmount = 0;
+            $tdsAmount = 0;
+            $gstAmount = 0;
+            $grossReceipt = 0;
+            $netReceipt = 0;
             
-            // Get TDS and GST from policy data
-            $tdsPercent = $policy['tds_percent'] ?? TDS_PERCENT;
-            $gstPercent = $policy['gst_percent'] ?? GST_PERCENT;
-            
-            // Lookup grid data
-            $key = implode('|', [
+            // Get TDS and GST from agreement lookup
+            $agreementKey = $policy['broker_code'] . '|' . $policy['company_code'];
+            $tdsPercent = $agreementLookup[$agreementKey]['tds'] ?? TDS_PERCENT;
+            $gstPercent = $agreementLookup[$agreementKey]['gst'] ?? GST_PERCENT;
+
+            // Lookup grid data for both Base and Reward
+            $keyBase = implode('|', [
                 $policy['broker_code'], 
                 $policy['company_code'], 
                 $policy['plan_code'], 
                 $policy['pt'], 
-                'Commission', // brokerage_type
-                'Standard'    // category
+                'Base',
+                'Base' // Assuming category is same as brokerage_type for this example
+            ]);
+            
+            $keyReward = implode('|', [
+                $policy['broker_code'], 
+                $policy['company_code'], 
+                $policy['plan_code'], 
+                $policy['pt'], 
+                'Reward',
+                'Reward' // Assuming category is same as brokerage_type for this example
             ]);
 
-            // Process commission percentage
-            if (isset($gridLookup[$key])) {
-                foreach ($gridLookup[$key] as $gridData) {
-                    // Check premium range
-                    $premiumMatch = $netPremium >= $gridData['premium_from'] && 
-                                  $netPremium <= $gridData['premium_to'];
+            // Process Base commission percentage
+            if (isset($gridLookup[$keyBase])) {
+                foreach ($gridLookup[$keyBase] as $gridData) {
+                    // Check all matching conditions
+                    $premiumMatch = $netPremium >= ($gridData['premium_from'] ?? 0) && 
+                                  $netPremium <= ($gridData['premium_to'] ?? PHP_FLOAT_MAX);
                     
-                    // Check applicable date range
-                    $dateMatch = $policy['policy_issued'] >= $gridData['applicable_start'] && 
-                                $policy['policy_issued'] <= $gridData['applicable_end'];
+                    $dateMatch = strtotime($policy['policy_issued']) >= strtotime($gridData['applicable_start'] ?? '1970-01-01') && 
+                                strtotime($policy['policy_issued']) <= strtotime($gridData['applicable_end'] ?? '2099-12-31');
                     
-                    // Check policy combination if specified
                     $policyCombinationMatch = empty($gridData['policy_combination']) || 
-                                            $gridData['policy_combination'] == $policy['policy_combination'];
+                                            $gridData['policy_combination'] == ($policy['policy_combination'] ?? '');
                     
-                    // Check case type if specified
                     $caseTypeMatch = empty($gridData['case_type']) || 
-                                   $gridData['case_type'] == $policy['case_type'];
+                                   $gridData['case_type'] == ($policy['case_type'] ?? '');
                     
-                    // Check location if specified
                     $locationMatch = empty($gridData['location']) || 
-                                    $gridData['location'] == $policy['location'];
+                                    $gridData['location'] == ($policy['location'] ?? '');
                     
                     if ($premiumMatch && $dateMatch && $policyCombinationMatch && 
                         $caseTypeMatch && $locationMatch) {
-                        $basePercent = $gridData['applicable_percentage'];
+                        $basePercent = $gridData['applicable_percentage'] ?? 0;
+                        break; // Use first matching rule
                     }
                 }
             }
 
-            // Skip if no percentage is set
-            if ($basePercent == 0) {
-                continue;
+            // Process Reward commission percentage (same logic as Base)
+            if (isset($gridLookup[$keyReward])) {
+                foreach ($gridLookup[$keyReward] as $gridData) {
+                    // Same matching logic as above
+                    $premiumMatch = $netPremium >= ($gridData['premium_from'] ?? 0) && 
+                                    $netPremium <= ($gridData['premium_to'] ?? PHP_FLOAT_MAX);
+                    
+                    $dateMatch = strtotime($policy['policy_issued']) >= strtotime($gridData['applicable_start'] ?? '1970-01-01') && 
+                                strtotime($policy['policy_issued']) <= strtotime($gridData['applicable_end'] ?? '2099-12-31');
+                    
+                    $policyCombinationMatch = empty($gridData['policy_combination']) || 
+                                            $gridData['policy_combination'] == ($policy['policy_combination'] ?? '');
+                    
+                    $caseTypeMatch = empty($gridData['case_type']) || 
+                                   $gridData['case_type'] == ($policy['case_type'] ?? '');
+                    
+                    $locationMatch = empty($gridData['location']) || 
+                                    $gridData['location'] == ($policy['location'] ?? '');
+                    
+                    if ($premiumMatch && $dateMatch && $policyCombinationMatch && 
+                        $caseTypeMatch && $locationMatch) {
+                        $rewardPercent = $gridData['applicable_percentage'] ?? 0;
+                        break; // Use first matching rule
+                    }
+                }
             }
 
-            // Calculate amounts
+            // Calculate amounts based on percentages
             $baseAmount = $netPremium * $basePercent / 100;
-            $rewardAmount = 0;
-            $totalPayinPercent = $basePercent;
-            $payinAmount = $netPremium * $totalPayinPercent / 100;
+            $rewardAmount = $netPremium * $rewardPercent / 100;
+            $totalPayinPercent = $basePercent + $rewardPercent;
+            $payinAmount = $baseAmount + $rewardAmount;
             $tdsAmount = $payinAmount * $tdsPercent / 100;
             $gstAmount = $payinAmount * $gstPercent / 100;
             $grossReceipt = $payinAmount - $tdsAmount + $gstAmount;
             $netReceipt = $payinAmount - $tdsAmount;
 
             // Add to batch insert
-            $placeholders[] = "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $placeholders[] = "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)";
             $values = array_merge($values, [
-                $policy['lead_id'],
+                $policy['lead_id'] ?? 0,
                 'hi', // product (health insurance)
-                $policy['customer_name'],
+                $policy['customer_name'] ?? 'N/A',
                 $policy['broker_name'] ?? 'Unknown Broker',
-                $policy['insurance_company_name'],
-                $policy['plan_name'],
-                $policy['pt'],
+                $policy['insurance_company_name'] ?? 'N/A',
+                $policy['plan_name'] ?? 'N/A',
+                $policy['pt'] ?? 0,
                 $netPremium,
                 $basePercent,
                 $baseAmount,
-                0, // reward_percent
-                0, // reward_amount
+                $rewardPercent,
+                $rewardAmount,
                 $totalPayinPercent,
                 $payinAmount,
                 $tdsPercent,
@@ -236,17 +285,17 @@ try {
                 $gstAmount,
                 $grossReceipt,
                 $netReceipt,
-                $policy['mr_name'] ?? 'N/A',
+                $policy['rm_name'] ?? 'N/A',
                 $policy['team'] ?? 'N/A',
-                $policy['policy_number'],
-                $policy['policy_issued'],
+                $policy['policy_number'] ?? 'N/A',
+                $policy['policy_issued'] ?? date('Y-m-d'),
                 date('Y-m-d H:i:s'), // calculation_date
-                $policy['case_type'] ?? 'N/A', // policy_type
-                $policy['broker_code'], // broker_id
-                $policy['company_code'], // company_id
-                $policy['plan_code'], // plan_id
+                $policy['case_type'] ?? 'N/A', // case_type
+                $policy['broker_code'] ?? 0, // broker_id
+                $policy['company_code'] ?? 0, // company_id
+                $policy['plan_code'] ?? 0, // plan_id
                 $policy['location'] ?? 'N/A',
-                $policy['policy_name'],
+                $policy['policy_name'] ?? 'N/A',
                 $policy['status'] ?? 'Calculated'
             ]);
 
@@ -271,7 +320,7 @@ try {
                 $counter = 0;
             }
         } catch (Exception $e) {
-            error_log("Error processing policy ID {$policy['lead_id']}: " . $e->getMessage());
+            error_log("Error processing policy ID " . ($policy['lead_id'] ?? 'unknown') . ": " . $e->getMessage());
             // Continue with next policy
         }
     }
